@@ -20,7 +20,7 @@ ukrstatall <- function(file="data/4. IV. Готові харчові продукти.xls") {
   stats$ei <- sub("л", "L",stats$ei)
   stats$ei <- sub("тис. шт", "x1000pcs",stats$ei)
   stats$ei <- str_trim(stats$ei) ##remove spaces
-  stats$ei <- as.factor(stats$ei) ##change class
+  stats$ei <- as.character(stats$ei) ##change class
   
   kodesindex <- grep("^[0-9]{10}", stats$country) ##entry 10-digits codes
   
@@ -49,8 +49,11 @@ ukrstatall <- function(file="data/4. IV. Готові харчові продукти.xls") {
   stats <- separate(stats, col=destination_izmerenie, into = c("dest", "mera")) ##separate new column to 2 column
   stats <- stats[!stats$ei=="" & stats$summa>0,] ##del rows w/o ei and summa
   
-  stats$mera <- as.factor(stats$mera)
+  stats$mera <- as.character(stats$mera)
   stats$dest <- as.factor(stats$dest)
+  
+  ##b <- a$mera=="amount"
+  ##a$ei[b] <- "USD"
   
   per <- substr(period,nchar(period)-23,nchar(period)) ##extract some inf about period for filename
   write.xlsx2(stats, paste(per,".xlsx"), row.names=F)
