@@ -51,9 +51,9 @@ ukrstatall <- function(file="data/4. IV. Готові харчові продукти.xls") {
   
   stats$mera <- as.character(stats$mera)
   stats$dest <- as.factor(stats$dest)
-  
-  ##b <- a$mera=="amount"
-  ##a$ei[b] <- "USD"
+  nmera <- stats$mera=="amount"
+  stats$ei[nmera] <- "USDthnds"
+  stats <- stats[!is.na(stats$country), -5]
   
   per <- substr(period,nchar(period)-23,nchar(period)) ##extract some inf about period for filename
   write.xlsx2(stats, paste(per,".xlsx"), row.names=F)
