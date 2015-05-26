@@ -61,11 +61,13 @@ ukrstatall <- function(file="data") {
                 nmera <- stats$mera=="amount"
                 stats$ei[nmera] <- "USDthnds"
                 stats <- stats[!is.na(stats$country), -5]
-                
+                stats <- separate(stats, col=ukt, into=c("ukt", "group"), sep="\n") ##separate kode from groupe
+                ##ukt must be a factor
+                ##найти вхождения "-" перенести их в другой столбец, обнулить в "группа",
+                ##если сумма всех групп без "-" будет сходиться с общей суммой 
                 allstats <- rbind(allstats, stats)
                 
         }
-        
         write.xlsx2(allstats, "allstats.xlsx", row.names=F)
         
 }
