@@ -65,10 +65,14 @@ ukrstatall <- function(file="data") {
                 ##ukt must be a factor
                 ##найти вхождения "-" перенести их в другой столбец, обнулить в "группа",
                 ##если сумма всех групп без "-" будет сходиться с общей суммой 
+                
+                stats <- stats[stats$ei=="USDthnds",] ##nrows decrease from 370k to 164k
+                mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
+                stats <- stats[mainukt,] ##decrease to 53k
                 allstats <- rbind(allstats, stats)
                 
         }
-        a <<- allstats
-        ##write.xlsx2(allstats, "allstats.xlsx", row.names=F)
+        ##Amain <<- allstats
+        write.xlsx2(allstats, "allstats.xlsx", row.names=F)
         
 }
