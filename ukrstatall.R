@@ -1,5 +1,5 @@
 ukrstatall <- function(file="data") {
-        options(java.parameters = "-Xmx1000m") ##to avoid java out of memory error
+        options(java.parameters = "-Xmx1000m") ##to avoid java out of memory error, must be out of function
         library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr)
         allstats <- NULL
         file_list <- list.files("data",pattern="*.xls*", full.names=1)
