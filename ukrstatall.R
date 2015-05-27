@@ -1,5 +1,5 @@
 ukrstatall <- function(file="data") {
-        options(java.parameters = "-Xmx1000m") ##to avoid java out of memory error, must be out of function
+        options(java.parameters = "-Xmx3500m") ##to avoid java out of memory error, must be out of function
         library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr)
         allstats <- NULL
         file_list <- list.files("data",pattern="*.xls*", full.names=1)
@@ -39,7 +39,7 @@ ukrstatall <- function(file="data") {
                 stats$ukt <- na.locf(stats$ukt) ##fill NA with value above  
                 
                 ##delete summarizing rows 
-                todel <- c("ÂÑÜÎÃÎ", "ÊÐÀ¯ÍÈ ÑÍÄ", "IÍØI ÊÐÀ¯ÍÈ ÑÂIÒÓ", "ªÂÐÎÏÀ", "ÀÇ²ß", "ÀÔÐÈÊÀ", "ÀÌÅÐÈÊÀ", "ÀÂÑÒÐÀË²ß ² ÎÊÅÀÍ²ß", "²ÍØ²") ## ýëåìåíòû íà óäàëåíèå
+                todel <- c("ÂÑÜÎÃÎ", "ÊÐÀ¯ÍÈ ÑÍÄ", "IÍØI ÊÐÀ¯ÍÈ ÑÂIÒÓ", "ªÂÐÎÏÀ", "ÀÇ²ß", "^ÀÔÐÈÊÀ$", "ÀÌÅÐÈÊÀ", "ÀÂÑÒÐÀË²ß ² ÎÊÅÀÍ²ß", "²ÍØ²") ## ýëåìåíòû íà óäàëåíèå
                 del_others <- NULL
                 for(i in 1:length(todel)){
                         del_others <- c(del_others, grep(todel[i], stats$country)) ## íàõîæó ¹ âõîæäåíèÿ âñåõ ýëåìåíòîâ íà óäàëåíèå è ôîðìèðóþ èç íèõ âåêòîð
@@ -68,6 +68,7 @@ ukrstatall <- function(file="data") {
                 allstats <- rbind(allstats, stats)
                 
         }
-        write.xlsx2(allstats, "allstats.xlsx", row.names=F)
+        a <<- allstats
+        ##write.xlsx2(allstats, "allstats.xlsx", row.names=F)
         
 }
