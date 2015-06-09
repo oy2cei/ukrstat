@@ -79,8 +79,13 @@ ukrstatall <- function(file="data") {
                         allstats <- rbind(allstats, stats)
                         
                 }
-                
-                ##Amain <<- allstats
-                write.xlsx2(allstats, "Allstats.xlsx", row.names=F)
-                }  
+        }
+        gC <- read.csv("groupCountry.csv", sep=";")
+        allstats$country <- as.character(allstats$country)
+        gC$country <- as.character(gC$country)
+        print("start joining")
+        allstats <- left_join(allstats, gC, by="country")
+        Amain <<- allstats
+        ##write.xlsx2(allstats, "Allstats.xlsx", row.names=F)
+        
 }
