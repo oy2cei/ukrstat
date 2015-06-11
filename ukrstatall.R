@@ -9,6 +9,8 @@ ukrstatall <- function(file="data") {
                 print(dirperiod)
                 
                 file_list <- list.files(dirperiod, pattern="*.xls*", full.names=1) ##read all xls files from dirs
+                rizne <- grep("Ð Ñ–Ð·Ð½Ðµ.*$", file_list) ##find rizne dataFile in list. use command: next
+                file_list <- file_list[-rizne] ##exclude rizne file from list
                 nomer <- 0
                 for(ustats in file_list) {
                         
@@ -23,24 +25,16 @@ ukrstatall <- function(file="data") {
                         print(ustats); 
                         
                         stats <- read.xlsx2(ustats, sheetIndex=1, startRow=startROW, header=F) 
-                        ##startROW <- 7
                         names(stats) <- c("country", "ei", "export_kol", "export_amount", "import_kol", "import_amount") ##names for new dataset
                         stats$country[stats$country==""] <- NA ## replace all "" to NAs
                         stats$country <- str_trim(na.locf(stats$country)) ##fill NA with data from above and trim spaces
-                        
-                        ##period <- read.xlsx2(ustats, sheetIndex=1, startRow=3, endRow=3, header=F) ##read inf about period
-                        ##period <- as.character(period[[1]])
-                        ##print(period)
                         
                         for(i in 3:6){ ##change class of column
                                 stats[,i] <- as.numeric(as.character(stats[,i]))
                         }
                         
                         ##replace old ukr names with eng
-                        ##stats$ei <- sub("ë 100 % ñïèðòó", "100%spirit",stats$ei)
-                        stats$ei <- sub("êã", "kg",stats$ei)
-                        ##stats$ei <- sub("ë", "L",stats$ei)
-                        ##stats$ei <- sub("òèñ. øò", "x1000pcs",stats$ei)
+                        stats$ei <- sub("ÐºÐ³", "kg",stats$ei)
                         stats$ei <- str_trim(stats$ei) ##remove spaces
                         #######stats$ei <- as.character(stats$ei) ##change class
                         
@@ -53,14 +47,14 @@ ukrstatall <- function(file="data") {
                         stats <- stats[-1,] ##remove first row
                         stats$ukt <- na.locf(stats$ukt) ##fill NA with value above  
                         
-                        ##delete summarizing rows. ìîæåò áåç ýòîãî áëîêà ìîæíî îáîéòèñü?
-                        ##óäàëèâ â êîíöå ñòðîêè íå ïðîøåäøèå äæîéí ñ ãðóïïàìè ñòðàí
-                        todel <- c("ÂÑÜÎÃÎ", "ÊÐÀ¯ÍÈ ÑÍÄ", "IÍØI ÊÐÀ¯ÍÈ ÑÂIÒÓ", "ªÂÐÎÏÀ", "ÀÇ²ß", "^ÀÔÐÈÊÀ$", "ÀÌÅÐÈÊÀ", "ÀÂÑÒÐÀË²ß ² ÎÊÅÀÍ²ß", "²ÍØ²") ## ýëåìåíòû íà óäàëåíèå
+                        ##delete summarizing rows. Ð¼Ð¾Ð¶ÐµÑ‚ Ð±ÐµÐ· ÑÑ‚Ð¾Ð³Ð¾ Ð±Ð»Ð¾ÐºÐ° Ð¼Ð¾Ð¶Ð½Ð¾ Ð¾Ð±Ð¾Ð¹Ñ‚Ð¸ÑÑŒ?
+                        ##ÑƒÐ´Ð°Ð»Ð¸Ð² Ð² ÐºÐ¾Ð½Ñ†Ðµ ÑÑ‚Ñ€Ð¾ÐºÐ¸ Ð½Ðµ Ð¿Ñ€Ð¾ÑˆÐµÐ´ÑˆÐ¸Ðµ Ð´Ð¶Ð¾Ð¹Ð½ Ñ Ð³Ñ€ÑƒÐ¿Ð¿Ð°Ð¼Ð¸ ÑÑ‚Ñ€Ð°Ð½
+                        todel <- c("Ð’Ð¡Ð¬ÐžÐ“Ðž", "ÐšÐ ÐÐ‡ÐÐ˜ Ð¡ÐÐ”", "IÐÐ¨I ÐšÐ ÐÐ‡ÐÐ˜ Ð¡Ð’IÐ¢Ð£", "Ð„Ð’Ð ÐžÐŸÐ", "ÐÐ—Ð†Ð¯", "^ÐÐ¤Ð Ð˜ÐšÐ$", "ÐÐœÐ•Ð Ð˜ÐšÐ", "ÐÐ’Ð¡Ð¢Ð ÐÐ›Ð†Ð¯ Ð† ÐžÐšÐ•ÐÐÐ†Ð¯", "Ð†ÐÐ¨Ð†") ## ÑÐ»ÐµÐ¼ÐµÐ½Ñ‚Ñ‹ Ð½Ð° ÑƒÐ´Ð°Ð»ÐµÐ½Ð¸Ðµ
                         del_others <- NULL
                         for(i in 1:length(todel)){
-                                del_others <- c(del_others, grep(todel[i], stats$country)) ## íàõîæó ¹ âõîæäåíèÿ âñåõ ýëåìåíòîâ íà óäàëåíèå è ôîðìèðóþ èç íèõ âåêòîð
+                                del_others <- c(del_others, grep(todel[i], stats$country)) ## Ð½Ð°Ñ…Ð¾Ð¶Ñƒ â„– Ð²Ñ…Ð¾Ð¶Ð´ÐµÐ½Ð¸Ñ Ð²ÑÐµÑ… ÑÐ»ÐµÐ¼ÐµÐ½Ñ‚Ð¾Ð² Ð½Ð° ÑƒÐ´Ð°Ð»ÐµÐ½Ð¸Ðµ Ð¸ Ñ„Ð¾Ñ€Ð¼Ð¸Ñ€ÑƒÑŽ Ð¸Ð· Ð½Ð¸Ñ… Ð²ÐµÐºÑ‚Ð¾Ñ€
                         }
-                        stats <- stats[-del_others,] ## óäàëÿþ èç òàáëèöû âñå ñòðîêè (âõîæäåíèÿ) ýëåìåíòîâ òèïà "ÀÇ²ß", "ÀÔÐÈÊÀ" è ò.ï. èç âåêòîðà
+                        stats <- stats[-del_others,] ## ÑƒÐ´Ð°Ð»ÑÑŽ Ð¸Ð· Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹ Ð²ÑÐµ ÑÑ‚Ñ€Ð¾ÐºÐ¸ (Ð²Ñ…Ð¾Ð¶Ð´ÐµÐ½Ð¸Ñ) ÑÐ»ÐµÐ¼ÐµÐ½Ñ‚Ð¾Ð² Ñ‚Ð¸Ð¿Ð° "ÐÐ—Ð†Ð¯", "ÐÐ¤Ð Ð˜ÐšÐ" Ð¸ Ñ‚.Ð¿. Ð¸Ð· Ð²ÐµÐºÑ‚Ð¾Ñ€Ð°
                         
                         kodesindex2 <- grep("^[0-9]{6}", stats$country) ##new code ukt index
                         stats <- stats[-kodesindex2,] ##remove rows with codes. now i use stats$ukt
@@ -80,8 +74,8 @@ ukrstatall <- function(file="data") {
                         stats <- stats[!is.na(stats$country), -5]
                         stats <- separate(stats, col=ukt, into=c("ukt", "group"), sep="\n") ##separate kode from groupe
                         ##ukt must be a factor
-                        ##íàéòè âõîæäåíèÿ "-" ïåðåíåñòè èõ â äðóãîé ñòîëáåö, îáíóëèòü â "ãðóïïà",
-                        ##åñëè ñóììà âñåõ ãðóïï áåç "-" áóäåò ñõîäèòüñÿ ñ îáùåé ñóììîé 
+                        ##Ð½Ð°Ð¹Ñ‚Ð¸ Ð²Ñ…Ð¾Ð¶Ð´ÐµÐ½Ð¸Ñ "-" Ð¿ÐµÑ€ÐµÐ½ÐµÑÑ‚Ð¸ Ð¸Ñ… Ð² Ð´Ñ€ÑƒÐ³Ð¾Ð¹ ÑÑ‚Ð¾Ð»Ð±ÐµÑ†, Ð¾Ð±Ð½ÑƒÐ»Ð¸Ñ‚ÑŒ Ð² "Ð³Ñ€ÑƒÐ¿Ð¿Ð°",
+                        ##ÐµÑÐ»Ð¸ ÑÑƒÐ¼Ð¼Ð° Ð²ÑÐµÑ… Ð³Ñ€ÑƒÐ¿Ð¿ Ð±ÐµÐ· "-" Ð±ÑƒÐ´ÐµÑ‚ ÑÑ…Ð¾Ð´Ð¸Ñ‚ÑŒÑÑ Ñ Ð¾Ð±Ñ‰ÐµÐ¹ ÑÑƒÐ¼Ð¼Ð¾Ð¹ 
                         
                         stats <- stats[stats$ei=="USDthnds",] ##nrows decrease from 370k to 164k
                         mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
@@ -96,7 +90,7 @@ ukrstatall <- function(file="data") {
         gC$country <- as.character(gC$country)
         print("start joining")
         allstats <- left_join(allstats, gC, by="country")
-        ##Amain <<- allstats
-        write.xlsx2(allstats, "Allstats.xlsx", row.names=F)
+        Amain <<- allstats
+        ##write.xlsx2(allstats, "Allstats.xlsx", row.names=F)
         
 }
