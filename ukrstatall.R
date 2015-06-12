@@ -15,9 +15,9 @@ ukrstatall <- function(file="data") {
                 for(ustats in file_list) {
                         
                         nomer <- nomer+1
-                        a1 <- substr(file_list[nomer], 15, 999)
-                        a2 <- substr(file_list[nomer+1], 15, 999)
-                        a3 <- substr(file_list[nomer-1], 15, 999)
+                        a1 <- substr(file_list[nomer], 20, 999)
+                        a2 <- substr(file_list[nomer+1], 20, 999)
+                        a3 <- substr(file_list[nomer-1], 20, 999)
                         
                         if(identical(a1, a2)|identical(a1, a3)) startROW <- 8 ##for valid read data in 2 files
                         else startROW <- 7
@@ -90,7 +90,17 @@ ukrstatall <- function(file="data") {
         gC$country <- as.character(gC$country)
         print("start joining")
         allstats <- left_join(allstats, gC, by="country")
+        print("start writing data or xlsx file")
         Amain <<- allstats
         ##write.xlsx2(allstats, "Allstats.xlsx", row.names=F)
+        
+        ##plotting
+        q <- ggplot(Amain, aes(x=dest, y=thUSD/1000000, fill=dest)) +
+                geom_bar(stat="identity") + ##использую сумму а не кол-во 
+                facet_wrap(~period) + 
+                labs(title = "Экспорт и Импорт за 2013-2014 гг.", x = "", y = "млрд. долларов США") 
+                ##coord_cartesian(ylim = c(40, 80))
+        a <- xtabs(thUSD ~ groupCountry + dest,data=Amain)
+        z <- plot(a, col=Amain$groupCountry, main="Соотношение импорта/экспорта по группам стран")
         
 }
