@@ -1,6 +1,7 @@
-ukrstatall <- function(file="data") {
+ukrstatall <- function() {
         ##options(java.parameters = "-Xmx3500m") ##to avoid java out of memory error, must be out of function
-        library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr)
+        ##options(java.parameters = "-XX:-UseGCOverheadLimit")
+        library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr); library(ggplot2)
         allstats <- NULL
         
         dir_list <- list.dirs(recursive = F, full.names = F) ##read all dirs from wd
@@ -9,11 +10,11 @@ ukrstatall <- function(file="data") {
                 print(dirperiod)
                 
                 file_list <- list.files(dirperiod, pattern="*.xls*", full.names=1) ##read all xls files from dirs
-                rizne <- grep("Різне.*$", file_list) ##find rizne dataFile in list. use command: next
-                file_list <- file_list[-rizne] ##exclude rizne file from list
+                ##rizne <- grep("Різне.*$", file_list) ##find rizne dataFile in list. use command: next
+                ##file_list <- file_list[-rizne] ##exclude rizne file from list
                 nomer <- 0
+                
                 for(ustats in file_list) {
-                        
                         nomer <- nomer+1
                         a1 <- substr(file_list[nomer], 20, 999)
                         a2 <- substr(file_list[nomer+1], 20, 999)
@@ -27,6 +28,15 @@ ukrstatall <- function(file="data") {
                         stats <- read.xlsx2(ustats, sheetIndex=1, startRow=startROW, header=F) 
                         names(stats) <- c("country", "ei", "export_kol", "export_amount", "import_kol", "import_amount") ##names for new dataset
                         stats$country[stats$country==""] <- NA ## replace all "" to NAs
+                        
+                        if(grepl("Різне.*$", ustats)) {
+                                stats$country <- paste("00000000", "prochie", sep="\n")
+                                stats$ei <- "кг"
+                                stats <- rbind(stats, stats, stats, stats)
+                                stats[2,1] <- "0000000_ІНШІ"
+                                stats[4,1] <- "OTHERS"
+                        }
+                        
                         stats$country <- str_trim(na.locf(stats$country)) ##fill NA with data from above and trim spaces
                         
                         for(i in 3:6){ ##change class of column
@@ -52,12 +62,15 @@ ukrstatall <- function(file="data") {
                         todel <- c("ВСЬОГО", "КРАЇНИ СНД", "IНШI КРАЇНИ СВIТУ", "ЄВРОПА", "АЗІЯ", "^АФРИКА$", "АМЕРИКА", "АВСТРАЛІЯ І ОКЕАНІЯ", "ІНШІ") ## элементы на удаление
                         del_others <- NULL
                         for(i in 1:length(todel)){
-                                del_others <- c(del_others, grep(todel[i], stats$country)) ## нахожу № вхождения всех элементов на удаление и формирую из них вектор
+                                
+                                del_others <- c(del_others, grep(todel[i], stats$country)) ## find all string that must be deleted
                         }
                         stats <- stats[-del_others,] ## удаляю из таблицы все строки (вхождения) элементов типа "АЗІЯ", "АФРИКА" и т.п. из вектора
                         
+                        
                         kodesindex2 <- grep("^[0-9]{6}", stats$country) ##new code ukt index
                         stats <- stats[-kodesindex2,] ##remove rows with codes. now i use stats$ukt
+                        
                         
                         ##realise with sapply
                         stats$country <- as.factor(stats$country)
@@ -72,6 +85,8 @@ ukrstatall <- function(file="data") {
                         nmera <- stats$mera=="amount"
                         stats$ei[nmera] <- "USDthnds"
                         stats <- stats[!is.na(stats$country), -5]
+                        
+                        
                         stats <- separate(stats, col=ukt, into=c("ukt", "group"), sep="\n") ##separate kode from groupe
                         ##ukt must be a factor
                         ##найти вхождения "-" перенести их в другой столбец, обнулить в "группа",
@@ -80,6 +95,7 @@ ukrstatall <- function(file="data") {
                         stats <- stats[stats$ei=="USDthnds",] ##nrows decrease from 370k to 164k
                         mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
                         stats <- stats[mainukt, -2] ##decrease to 53k, dek column ei
+                        
                         stats$period <- dirperiod ##add column with name of dir, must be period
                         allstats <- rbind(allstats, stats)
                         
@@ -92,15 +108,19 @@ ukrstatall <- function(file="data") {
         allstats <- left_join(allstats, gC, by="country")
         print("start writing data or xlsx file")
         Amain <<- allstats
-        ##write.xlsx2(allstats, "Allstats.xlsx", row.names=F)
+        print(object.size(Amain), units="Mb")
+        
+        ##write.csv2(allstats, "Allstats.csv", row.names = F) ## then open with MS excel and save as xlsx
+        
+        ##write.xlsx2(allstats, "Allstats.xlsx", row.names=F) ##out of memory
         
         ##plotting
-        q <- ggplot(Amain, aes(x=dest, y=thUSD/1000000, fill=dest)) +
-                geom_bar(stat="identity") + ##использую сумму а не кол-во 
-                facet_wrap(~period) + 
-                labs(title = "Экспорт и Импорт за 2013-2014 гг.", x = "", y = "млрд. долларов США") 
-                ##coord_cartesian(ylim = c(40, 80))
-        a <- xtabs(thUSD ~ groupCountry + dest,data=Amain)
-        z <- plot(a, col=Amain$groupCountry, main="Соотношение импорта/экспорта по группам стран")
+        ##q <- ggplot(Amain, aes(x=dest, y=thUSD/1000000, fill=dest)) +
+        ##        geom_bar(stat="identity") + ##использую сумму а не кол-во 
+        ##        facet_wrap(~period) + 
+        ##        labs(title = "Экспорт и Импорт за 2013-2014 гг.", x = "", y = "млрд. долларов США") + 
+        ##        coord_cartesian(ylim = c(0, 80))
+        ##a <- xtabs(thUSD ~ groupCountry + dest,data=Amain)
+        ##plot(a, col=Amain$groupCountry, main="Соотношение импорта/экспорта по группам стран")
         
 }
