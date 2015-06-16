@@ -25,7 +25,7 @@ ukrstatall <- function() {
                         
                         print(ustats); 
                         
-                        stats <- read.xlsx2(ustats, sheetIndex=1, startRow=startROW, header=F) 
+                        stats <- read.xlsx2(ustats, sheetIndex=1, startRow=startROW, header=F, colClasses = c("character", "character", "character", "character", "character", "character")) 
                         names(stats) <- c("country", "ei", "export_kol", "export_amount", "import_kol", "import_amount") ##names for new dataset
                         stats$country[stats$country==""] <- NA ## replace all "" to NAs
                         
@@ -105,7 +105,8 @@ ukrstatall <- function() {
         allstats$country <- as.character(allstats$country)
         gC$country <- as.character(gC$country)
         print("start joining")
-        allstats <- left_join(allstats, gC, by="country")
+        ##allstats <- left_join(allstats, gC, by="country")
+        allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
         print("start writing data or xlsx file")
         Amain <<- allstats
         print(object.size(Amain), units="Mb")
