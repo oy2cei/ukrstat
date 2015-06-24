@@ -1,6 +1,4 @@
 ukrstatall <- function() {
-        ##options(java.parameters = "-Xmx3500m") ##to avoid java out of memory error, must be out of function
-        ##options(java.parameters = "-XX:-UseGCOverheadLimit")
         library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr); library(ggplot2)
         allstats <- NULL
         
@@ -10,15 +8,13 @@ ukrstatall <- function() {
                 print(dirperiod)
                 
                 file_list <- list.files(dirperiod, pattern="*.xls*", full.names=1) ##read all xls files from dirs
-                ##rizne <- grep("Різне.*$", file_list) ##find rizne dataFile in list. use command: next
-                ##file_list <- file_list[-rizne] ##exclude rizne file from list
                 nomer <- 0
                 
                 for(ustats in file_list) {
                         nomer <- nomer+1
-                        a1 <- substr(file_list[nomer], 20, 999)
-                        a2 <- substr(file_list[nomer+1], 20, 999)
-                        a3 <- substr(file_list[nomer-1], 20, 999)
+                        a1 <- substr(file_list[nomer], 20, 200)
+                        a2 <- substr(file_list[nomer+1], 20, 200)
+                        a3 <- substr(file_list[nomer-1], 20, 200)
                         
                         if(identical(a1, a2)|identical(a1, a3)) startROW <- 8 ##for valid read data in 2 files
                         else startROW <- 7
@@ -46,10 +42,8 @@ ukrstatall <- function() {
                         ##replace old ukr names with eng
                         stats$ei <- sub("кг", "kg",stats$ei)
                         stats$ei <- str_trim(stats$ei) ##remove spaces
-                        #######stats$ei <- as.character(stats$ei) ##change class
                         
                         kodesindex <- grep("^[0-9]{6}", stats$country) ##entry 10-digits codes, some file include less-difit number
-                        
                         stats$ukt <- NA ##new column
                         for(i in kodesindex){
                                 stats$ukt[i] <- stats$country[i] ##assigned to new column dates from 10-digits codes ukt
@@ -57,8 +51,6 @@ ukrstatall <- function() {
                         stats <- stats[-1,] ##remove first row
                         stats$ukt <- na.locf(stats$ukt) ##fill NA with value above  
                         
-                        ##delete summarizing rows. может без этого блока можно обойтись?
-                        ##удалив в конце строки не прошедшие джойн с группами стран
                         todel <- c("ВСЬОГО", "КРАЇНИ СНД", "IНШI КРАЇНИ СВIТУ", "ЄВРОПА", "АЗІЯ", "^АФРИКА$", "АМЕРИКА", "АВСТРАЛІЯ І ОКЕАНІЯ", "ІНШІ") ## элементы на удаление
                         del_others <- NULL
                         for(i in 1:length(todel)){
@@ -70,7 +62,6 @@ ukrstatall <- function() {
                         
                         kodesindex2 <- grep("^[0-9]{6}", stats$country) ##new code ukt index
                         stats <- stats[-kodesindex2,] ##remove rows with codes. now i use stats$ukt
-                        
                         
                         ##realise with sapply
                         stats$country <- as.factor(stats$country)
@@ -86,7 +77,6 @@ ukrstatall <- function() {
                         stats$ei[nmera] <- "USDthnds"
                         stats <- stats[!is.na(stats$country), -5]
                         
-                        
                         stats <- separate(stats, col=ukt, into=c("ukt", "group"), sep="\n") ##separate kode from groupe
                         ##ukt must be a factor
                         ##найти вхождения "-" перенести их в другой столбец, обнулить в "группа",
@@ -94,7 +84,8 @@ ukrstatall <- function() {
                         
                         stats <- stats[stats$ei=="USDthnds",] ##nrows decrease from 370k to 164k
                         mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
-                        stats <- stats[mainukt, -2] ##decrease to 53k, dek column ei
+                        stats <- stats[mainukt, -2] ##decrease to 53k, del column ei, 20 Mb csv file
+                        ##stats <- stats[, -2] ## del column ei, leave all ukt codes. 40 Mb csv file!
                         
                         stats$period <- dirperiod ##add column with name of dir, must be period
                         allstats <- rbind(allstats, stats)
@@ -104,16 +95,17 @@ ukrstatall <- function() {
         gC <- read.csv("groupCountry.csv", sep=";")
         allstats$country <- as.character(allstats$country)
         gC$country <- as.character(gC$country)
+        
         print("start joining")
-        ##allstats <- left_join(allstats, gC, by="country")
         allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
+        
         print("start writing data or xlsx file")
         Amain <<- allstats
         print(object.size(Amain), units="Mb")
         
-        ##write.csv2(allstats, "Allstats.csv", row.names = F) ## then open with MS excel and save as xlsx
+        write.csv2(Amain, "imp-exp 4m2014-2015.csv", row.names = F) ## then open with MS excel and save as xlsx
         
-        ##write.xlsx2(allstats, "Allstats.xlsx", row.names=F) ##out of memory
+        ##write.xlsx2(Amain, "Allstats.xlsx", row.names=F) ##out of memory
         
         ##plotting
         ##q <- ggplot(Amain, aes(x=dest, y=thUSD/1000000, fill=dest)) +
