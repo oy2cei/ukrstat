@@ -25,7 +25,7 @@ ukrstatall <- function() {
                         names(stats) <- c("country", "ei", "export_kol", "export_amount", "import_kol", "import_amount") ##names for new dataset
                         stats$country[stats$country==""] <- NA ## replace all "" to NAs
                         
-                        if(grepl("Різне.*$", ustats)) {
+                        if(grepl("Р.зне.*$", ustats)) {
                                 stats$country <- paste("00000000", "prochie", sep="\n")
                                 stats$ei <- "кг"
                                 stats <- rbind(stats, stats, stats, stats)
@@ -83,8 +83,8 @@ ukrstatall <- function() {
                         ##если сумма всех групп без "-" будет сходиться с общей суммой 
                         
                         stats <- stats[stats$ei=="USDthnds",] ##nrows decrease from 370k to 164k
-                        mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
-                        stats <- stats[mainukt, -2] ##decrease to 53k, del column ei, 20 Mb csv file
+                        ##mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
+                        ##stats <- stats[mainukt, -2] ##decrease to 53k, del column ei, 20 Mb csv file
                         ##stats <- stats[, -2] ## del column ei, leave all ukt codes. 40 Mb csv file!
                         
                         stats$period <- dirperiod ##add column with name of dir, must be period
@@ -96,14 +96,14 @@ ukrstatall <- function() {
         allstats$country <- as.character(allstats$country)
         gC$country <- as.character(gC$country)
         
-        print("start joining")
+        print(paste("start joining at:", Sys.time()))
         allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
         
-        print("start writing data or xlsx file")
+        print(paste("start writing data or xlsx file. Begin at:", Sys.time()))
         Amain <<- allstats
         print(object.size(Amain), units="Mb")
-        
-        write.csv2(Amain, "imp-exp 4m2014-2015.csv", row.names = F) ## then open with MS excel and save as xlsx
+        Sys.time()
+        ##write.csv2(Amain, "imp-exp 8m2014-2015.csv", row.names = F) ## then open with MS excel and save as xlsx
         
         ##write.xlsx2(Amain, "Allstats.xlsx", row.names=F) ##out of memory
         
