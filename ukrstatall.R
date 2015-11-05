@@ -92,6 +92,8 @@ ukrstatall <- function() {
                         
                 }
         }
+        
+        ##add countries
         gC <- read.csv("groupCountry.csv", sep=";")
         allstats$country <- as.character(allstats$country)
         gC$country <- as.character(gC$country)
@@ -99,11 +101,20 @@ ukrstatall <- function() {
         print(paste("start joining at:", Sys.time()))
         allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
         
+        ##add UKT razdel and groups
+        Ucodes <- read.csv("UKTcodes.csv", sep=";")
+        Ucodes$cod <- as.character(Ucodes$cod)
+        allstats$cod <- 0
+        allstats$cod <- substr(allstats$ukt, 1,(nchar(allstats$ukt)-8))
+        
+        allstats <- merge(x=allstats, y=Ucodes, by="cod", all.x = T)
+        
+        
         print(paste("start writing data or xlsx file. Begin at:", Sys.time()))
-        Amain <<- allstats
+        Amain <<- allstats[,c(-1,-3)]
         print(object.size(Amain), units="Mb")
         Sys.time()
-        ##write.csv2(Amain, "imp-exp 8m2014-2015.csv", row.names = F) ## then open with MS excel and save as xlsx
+        write.csv2(Amain, "TEST.csv", row.names = F) ## then open with MS excel and save as xlsx
         
         ##write.xlsx2(Amain, "Allstats.xlsx", row.names=F) ##out of memory
         
