@@ -1,5 +1,6 @@
 ukrstatall <- function() {
         library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr); library(ggplot2)
+        a <- Sys.time()
         allstats <- NULL
         
         dir_list <- list.dirs(recursive = F, full.names = F) ##read all dirs from wd
@@ -35,28 +36,25 @@ ukrstatall <- function() {
                         
                         stats$country <- str_trim(na.locf(stats$country)) ##fill NA with data from above and trim spaces
                         
-                        for(i in 3:6){ ##change class of column
-                                stats[,i] <- as.numeric(as.character(stats[,i]))
-                        }
+                        stats[,3:6] <- lapply(stats[,3:6], as.character)
+                        stats[,3:6] <- lapply(stats[,3:6], as.numeric)
+                        
                         
                         ##replace old ukr names with eng
                         stats$ei <- sub("кг", "kg",stats$ei)
                         stats$ei <- str_trim(stats$ei) ##remove spaces
                         
-                        kodesindex <- grep("^[0-9]{6}", stats$country) ##entry 10-digits codes, some file include less-difit number
+                        kodesindex <- grep("^[0-9]{6}", stats$country) ##entry 10-digits codes, some file include less-digit number
+                        
                         stats$ukt <- NA ##new column
-                        for(i in kodesindex){
-                                stats$ukt[i] <- stats$country[i] ##assigned to new column dates from 10-digits codes ukt
-                        }
+                        stats$ukt[kodesindex] <- stats$country[kodesindex] ##assigning to new column from 10-digits codes ukt
+                        
                         stats <- stats[-1,] ##remove first row
                         stats$ukt <- na.locf(stats$ukt) ##fill NA with value above  
                         
                         todel <- c("ВСЬОГО", "КРАЇНИ СНД", "IНШI КРАЇНИ СВIТУ", "ЄВРОПА", "АЗІЯ", "^АФРИКА$", "АМЕРИКА", "АВСТРАЛІЯ І ОКЕАНІЯ", "ІНШІ") ## элементы на удаление
-                        del_others <- NULL
-                        for(i in 1:length(todel)){
-                                
-                                del_others <- c(del_others, grep(todel[i], stats$country)) ## find all string that must be deleted
-                        }
+                        del_others <- grep(paste(todel, collapse = "|"), stats$country) ## find all string that must be deleted
+                        
                         stats <- stats[-del_others,] ## удаляю из таблицы все строки (вхождения) элементов типа "АЗІЯ", "АФРИКА" и т.п. из вектора
                         
                         
@@ -78,9 +76,6 @@ ukrstatall <- function() {
                         stats <- stats[!is.na(stats$country), -5]
                         
                         stats <- separate(stats, col=ukt, into=c("ukt", "group"), sep="\n") ##separate kode from groupe
-                        ##ukt must be a factor
-                        ##найти вхождения "-" перенести их в другой столбец, обнулить в "группа",
-                        ##если сумма всех групп без "-" будет сходиться с общей суммой 
                         
                         stats <- stats[stats$ei=="USDthnds",] ##nrows decrease from 370k to 164k
                         ##mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
@@ -114,8 +109,13 @@ ukrstatall <- function() {
         Amain <<- allstats[,c(-1,-3)]
         print(object.size(Amain), units="Mb")
         Sys.time()
-        write.csv2(Amain, "TEST.csv", row.names = F) ## then open with MS excel and save as xlsx
+        write.csv2(Amain, "to del.csv", row.names = F) ## then open with MS excel and save as xlsx
+        print(paste("End at:", Sys.time()))
+        b <- Sys.time()
+        return(b-a)
         
+        
+        ##A <- Amain[order(Amain$ukt),] ##если без (-) добавить значение в новый столбец перенести значение ниже удалить строку
         ##write.xlsx2(Amain, "Allstats.xlsx", row.names=F) ##out of memory
         
         ##plotting
@@ -123,6 +123,11 @@ ukrstatall <- function() {
         ##        geom_bar(stat="identity") + ##использую сумму а не кол-во 
         ##        facet_wrap(~period) + 
         ##        labs(title = "Экспорт и Импорт за 2013-2014 гг.", x = "", y = "млрд. долларов США") + 
+        ##        coord_cartesian(ylim = c(0, 80))
+        ##a <- xtabs(thUSD ~ groupCountry + dest,data=Amain)
+        ##plot(a, col=Amain$groupCountry, main="Соотношение импорта/экспорта по группам стран")
+        
+}�а 2013-2014 гг.", x = "", y = "млрд. долларов США") + 
         ##        coord_cartesian(ylim = c(0, 80))
         ##a <- xtabs(thUSD ~ groupCountry + dest,data=Amain)
         ##plot(a, col=Amain$groupCountry, main="Соотношение импорта/экспорта по группам стран")
