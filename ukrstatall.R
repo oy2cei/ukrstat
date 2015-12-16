@@ -1,5 +1,5 @@
 ukrstatall <- function() {
-        library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr); library(ggplot2)
+        library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr); library(ggplot2); library(RPostgreSQL)
         a <- Sys.time()
         allstats <- NULL
         
@@ -109,7 +109,7 @@ ukrstatall <- function() {
         Amain <<- allstats[,c(-1,-3)]
         print(object.size(Amain), units="Mb")
         Sys.time()
-        write.csv2(Amain, "to del.csv", row.names = F) ## then open with MS excel and save as xlsx
+        ##write.csv2(Amain, "to del.csv", row.names = F) ## then open with MS excel and save as xlsx
         print(paste("End at:", Sys.time()))
         b <- Sys.time()
         return(b-a)
@@ -127,9 +127,11 @@ ukrstatall <- function() {
         ##a <- xtabs(thUSD ~ groupCountry + dest,data=Amain)
         ##plot(a, col=Amain$groupCountry, main="Соотношение импорта/экспорта по группам стран")
         
-}�а 2013-2014 гг.", x = "", y = "млрд. долларов США") + 
-        ##        coord_cartesian(ylim = c(0, 80))
-        ##a <- xtabs(thUSD ~ groupCountry + dest,data=Amain)
-        ##plot(a, col=Amain$groupCountry, main="Соотношение импорта/экспорта по группам стран")
-        
+        ##write to postgresql
+        ##drv <- dbDriver("PostgreSQL")
+        ##con <- dbConnect(drv, dbname = "postgres",
+        ##                 host = "localhost", port = 5432,
+        ##                 user = "postgres", password = pw)
+        ##dbWriteTable(con, "import_export_3q", value = Amain, append = TRUE, row.names = FALSE)
+
 }
