@@ -1,5 +1,6 @@
 ukrstatall <- function() {
-        library(xlsx); library(stringr); library(dplyr); library(zoo); library(tidyr); library(ggplot2); library(RPostgreSQL)
+        library(xlsx); library(stringr); library(dplyr); library(zoo); 
+        library(tidyr); library(ggplot2); library(RPostgreSQL); library(reshape)
         a <- Sys.time()
         allstats <- NULL
         
@@ -17,7 +18,11 @@ ukrstatall <- function() {
                         a2 <- substr(file_list[nomer+1], 20, 200)
                         a3 <- substr(file_list[nomer-1], 20, 200)
                         
-                        if(identical(a1, a2)|identical(a1, a3)) startROW <- 8 ##for valid read data in 2 files
+                        twofiles <- min(nchar(file_list))
+                        if(sum(nchar(file_list)==twofiles)<2) twofiles <- 1
+                        
+                        
+                        if(identical(a1, a2)|identical(a1, a3)|nchar(ustats)==twofiles) startROW <- 8 ##for valid read data in 2 files
                         else startROW <- 7
                         
                         print(ustats); 
@@ -94,6 +99,7 @@ ukrstatall <- function() {
         gC$country <- as.character(gC$country)
         
         print(paste("start joining at:", Sys.time()))
+        
         allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
         
         ##add UKT razdel and groups
@@ -103,10 +109,50 @@ ukrstatall <- function() {
         allstats$cod <- substr(allstats$ukt, 1,(nchar(allstats$ukt)-8))
         
         allstats <- merge(x=allstats, y=Ucodes, by="cod", all.x = T)
+        allstats$ukt <- as.numeric(allstats$ukt)
+        
+        print(paste("start pivoting data. Begin at:", Sys.time()))
+        ##level placement
+        allstats$level <- 0
+        for(i in 0:3){
+          b <- grepl(paste("(^-){",1,"} +(- ){", i,"}", sep = ""), allstats$group)
+          allstats$level[b] <- i+1
+        }
+        Amain <- allstats[,c(-1,-3)]
+        
+        ##-----------удаление суммарных строк, для сводной таблицы. долго, переделать
+        #Amain <- Amain[order(Amain$ukt),]
+        #Amain$pivot <- Amain$group
+        #Amain$pivot <- ifelse(Amain$level%%1000000==0, Amain$pivot, NA)
+        #Amain$pivot <- na.locf(Amain$pivot)
+        #lvls <- aggregate(level ~ pivot, Amain, sum)
+        #lvls$del <- lvls$level!=0 ##найти где сумма уровней не равна 0, т.е. 0-ой уровень в которых можно удалить
+        #lvls <- lvls[lvls$del==TRUE,-2]
+        #print(paste("merging for pivot. Begin at:", Sys.time()))
+        #Amain <- merge(x=Amain, y=lvls, by =  "pivot", all.x = T) #по текстовому полю долго мержить
+        #print("удаление лишней информации")
+        #Amain <- Amain[Amain$level+Amain$del,]
+        ##-------------
         
         
-        print(paste("start writing data or xlsx file. Begin at:", Sys.time()))
-        Amain <<- allstats[,c(-1,-3)]
+        ##separate months.
+        per <- levels(factor(Amain$period))
+        Amain <- spread(Amain, period, thUSD)
+        for(i in per){
+          Amain[i][is.na(Amain[i])] <- 0
+        }
+        
+        for(i in length(per):2){
+          Amain[per[i]] <- Amain[per[i]]-Amain[per[i-1]]
+        }
+        Amain <- gather(Amain, "period", "thUSD", 9:(8+length(per)))
+        Amain <- Amain[Amain$thUSD!=0,]
+        
+        
+        
+        
+        Amain <<- Amain
+        print(paste("start writing data. Begin at:", Sys.time()))
         print(object.size(Amain), units="Mb")
         Sys.time()
         ##write.csv2(Amain, "to del.csv", row.names = F) ## then open with MS excel and save as xlsx
