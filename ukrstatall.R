@@ -15,12 +15,13 @@ ukrstatall <- function() {
                 nomer <- 0
                 
                 for(ustats in file_list) {
+                        ##check for two-files data. start read from 1 line lower
                         nomer <- nomer+1
                         a1 <- substr(file_list[nomer], 20, 200)
                         a2 <- substr(file_list[nomer+1], 20, 200)
                         a3 <- substr(file_list[nomer-1], 20, 200)
                         
-                        twofiles <- min(nchar(file_list))
+                        twofiles <- min(nchar(file_list)) ##check for number-like files
                         if(sum(nchar(file_list)==twofiles)<2) twofiles <- 1
                         
                         
@@ -42,7 +43,7 @@ ukrstatall <- function() {
                         }
                         
                         stats$country <- str_trim(na.locf(stats$country)) ##fill NA with data from above and trim spaces
-                        
+                        ##apply classes to columns
                         stats[,3:6] <- lapply(stats[,3:6], as.character)
                         stats[,3:6] <- lapply(stats[,3:6], as.numeric)
                         
@@ -99,11 +100,12 @@ ukrstatall <- function() {
         gC <- read.csv("groupCountry.csv", sep=";")
         allstats$country <- as.character(allstats$country)
         gC$country <- as.character(gC$country)
-        
+        print(paste("Began in:", a))
         print(paste("start joining at:", Sys.time()))
         
-        A <<- allstats
-        allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
+        ##allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
+        allstats$groupCountry <-  gC$groupCountry[match(allstats$country, gC$country)]
+        
         
         ##add UKT razdel and groups
         Ucodes <- read.csv("UKTcodes.csv", sep=";")
@@ -111,17 +113,21 @@ ukrstatall <- function() {
         allstats$cod <- 0
         allstats$cod <- substr(allstats$ukt, 1,(nchar(allstats$ukt)-8))
         
-        allstats <- merge(x=allstats, y=Ucodes, by="cod", all.x = T)
+        #allstats <- merge(x=allstats, y=Ucodes, by="cod", all.x = T)
+        allstats$razdel <-  Ucodes$razdel[match(allstats$cod, Ucodes$cod)]
+        allstats$groups <-  Ucodes$groups[match(allstats$cod, Ucodes$cod)]
+        
         allstats$ukt <- as.numeric(allstats$ukt)
         
-        print(paste("start pivoting data. Begin at:", Sys.time()))
+        print(paste("start level placement. Begin at:", Sys.time()))
         ##level placement
         allstats$level <- 0
         for(i in 0:3){
           b <- grepl(paste("(^-){",1,"} +(- ){", i,"}", sep = ""), allstats$group)
           allstats$level[b] <- i+1
         }
-        Amain <- allstats[,c(-1,-3)]
+        drops <- c("cod","ei")
+        Amain <- allstats[ , !(names(allstats) %in% drops)]
         
         ##-----------удаление суммарных строк, для сводной таблицы. долго, переделать
         #Amain <- Amain[order(Amain$ukt),]
@@ -136,8 +142,11 @@ ukrstatall <- function() {
         #print("удаление лишней информации")
         #Amain <- Amain[Amain$level+Amain$del,]
         ##-------------
-        Amain <- unique(Amain)
-        B <<- Amain
+        
+        print(paste("delete duplicate. Begin at:", Sys.time()))
+        ##Amain <- unique.data.frame(Amain)
+        Amain <- Amain[!duplicated(Amain[,c(1,2,4:6)]),]
+        
         ##separate months
         print(paste("separate months. Begin at:", Sys.time()))
         per <- levels(factor(Amain$period))
@@ -152,13 +161,13 @@ ukrstatall <- function() {
         print(paste("gather months. Begin at:", Sys.time()))
         Amain <- Amain[,-9] ##delete first period. only if it is not january
         Amain <- gather(Amain, "period", "thUSD", 9:length(names(Amain)))
-        Amain <- Amain[Amain$thUSD!=0,]
+        Amain <<- Amain[Amain$thUSD!=0,]
         
         
         print(paste("start writing data. Begin at:", Sys.time()))
         print(object.size(Amain), units="Mb")
         Sys.time()
-        ##write.csv2(Amain, "1q2015.csv", row.names = F, append = T) ## then open with MS excel and save as xlsx
+        write.csv2(Amain, "2015.csv", row.names = F) ## then open with MS excel and save as xlsx
         ##write.table(Amain, file = "1q2015.csv", append = T, sep = ";", dec = ",", row.names = F, col.names = F, qmethod = "double")
         print(paste("End at:", Sys.time()))
         b <- Sys.time()
