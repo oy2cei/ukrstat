@@ -4,7 +4,9 @@ ukrstatall <- function() {
         a <- Sys.time()
         allstats <- NULL
         
-        dir_list <- list.dirs(recursive = F, full.names = F) ##read all dirs from wd
+        setwd("~/ukrstat")
+        
+        dir_list <- list.dirs(recursive = F, full.names = F ) ##read all dirs from wd
         
         for(dirperiod in dir_list){
                 print(dirperiod)
@@ -100,6 +102,7 @@ ukrstatall <- function() {
         
         print(paste("start joining at:", Sys.time()))
         
+        A <<- allstats
         allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
         
         ##add UKT razdel and groups
@@ -133,9 +136,10 @@ ukrstatall <- function() {
         #print("удаление лишней информации")
         #Amain <- Amain[Amain$level+Amain$del,]
         ##-------------
-        
-        
-        ##separate months.
+        Amain <- unique(Amain)
+        B <<- Amain
+        ##separate months
+        print(paste("separate months. Begin at:", Sys.time()))
         per <- levels(factor(Amain$period))
         Amain <- spread(Amain, period, thUSD)
         for(i in per){
@@ -145,24 +149,24 @@ ukrstatall <- function() {
         for(i in length(per):2){
           Amain[per[i]] <- Amain[per[i]]-Amain[per[i-1]]
         }
-        Amain <- gather(Amain, "period", "thUSD", 9:(8+length(per)))
+        print(paste("gather months. Begin at:", Sys.time()))
+        Amain <- Amain[,-9] ##delete first period. only if it is not january
+        Amain <- gather(Amain, "period", "thUSD", 9:length(names(Amain)))
         Amain <- Amain[Amain$thUSD!=0,]
         
         
-        
-        
-        Amain <<- Amain
         print(paste("start writing data. Begin at:", Sys.time()))
         print(object.size(Amain), units="Mb")
         Sys.time()
-        ##write.csv2(Amain, "to del.csv", row.names = F) ## then open with MS excel and save as xlsx
+        ##write.csv2(Amain, "1q2015.csv", row.names = F, append = T) ## then open with MS excel and save as xlsx
+        ##write.table(Amain, file = "1q2015.csv", append = T, sep = ";", dec = ",", row.names = F, col.names = F, qmethod = "double")
         print(paste("End at:", Sys.time()))
         b <- Sys.time()
         return(b-a)
         
         
         ##A <- Amain[order(Amain$ukt),] ##если без (-) добавить значение в новый столбец перенести значение ниже удалить строку
-        ##write.xlsx2(Amain, "Allstats.xlsx", row.names=F) ##out of memory
+        ##write.xlsx2(Amain, "Allstats.xlsx", row.names=F) ##out of memory2
         
         ##plotting
         ##q <- ggplot(Amain, aes(x=dest, y=thUSD/1000000, fill=dest)) +
