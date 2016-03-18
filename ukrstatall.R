@@ -51,9 +51,16 @@ ukrstatall <- function() {
                         ##replace old ukr names with eng
                         stats$ei <- sub("кг", "kg",stats$ei)
                         stats$ei <- str_trim(stats$ei) ##remove spaces
+                        problem <- grep("^-", stats$country)
                         
                         kodesindex <- grep("^[0-9]{6}", stats$country) ##entry 10-digits codes, some file include less-digit number
-                        
+                        for(i in problem){
+                                unkod <- last(kodesindex[kodesindex<i])
+                                q <- substr(stats$country[unkod], 1,9)
+                                q <- as.integer(q)+1
+                                if(i - unkod > 1) stats$country[i] <- paste(q, stats$country[i], " ")
+                        }
+                        kodesindex <- grep("^[0-9]{6}", stats$country)#w/o problems
                         stats$ukt <- NA ##new column
                         stats$ukt[kodesindex] <- stats$country[kodesindex] ##assigning to new column from 10-digits codes ukt
                         
@@ -78,12 +85,22 @@ ukrstatall <- function() {
                         stats <- stats[!stats$ei=="" & stats$thUSD>0,] ##del rows w/o ei and thUSD
                         
                         stats$mera <- as.character(stats$mera)
-                        stats$dest <- as.factor(stats$dest)
+                        ##был фактор, всё работало
+                        stats$dest <- as.character(stats$dest)
+                        ##
                         nmera <- stats$mera=="amount"
                         stats$ei[nmera] <- "USDthnds"
                         stats <- stats[!is.na(stats$country), -5]
                         
-                        stats <- separate(stats, col=ukt, into=c("ukt", "group"), sep="\n") ##separate kode from groupe
+                        ##new line TEST IT
+                        stats$ukt <- str_trim(stats$ukt)
+                        #stats$ukt <- gsub("000 -","000\n-", stats$ukt)##test line
+                        #stats$ukt <- gsub("\n","  ", stats$ukt)
+                        ##stats <- separate(stats, col=ukt, into=c("ukt", "group"), sep=" {2,3}") ##"\n"separate kode from groupe
+                        
+                        stats$group <- substr(stats$ukt,11,9999)
+                        stats$ukt <- gsub("\\D", "", substr(stats$ukt,1,10))
+                        stats$group <- str_trim(stats$group)
                         
                         stats <- stats[stats$ei=="USDthnds",] ##nrows decrease from 370k to 164k
                         ##mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
@@ -97,7 +114,7 @@ ukrstatall <- function() {
         }
         
         ##add countries
-        gC <- read.csv("groupCountry.csv", sep=";")
+        gC <- read.csv("groupCountry.csv", sep=";", colClasses = c("character","character"))
         allstats$country <- as.character(allstats$country)
         gC$country <- as.character(gC$country)
         print(paste("Began in:", a))
@@ -108,10 +125,13 @@ ukrstatall <- function() {
         
         
         ##add UKT razdel and groups
-        Ucodes <- read.csv("UKTcodes.csv", sep=";")
+        Ucodes <- read.csv("UKTcodes.csv", sep=";", colClasses = c("integer","character","character"))
         Ucodes$cod <- as.character(Ucodes$cod)
         allstats$cod <- 0
-        allstats$cod <- substr(allstats$ukt, 1,(nchar(allstats$ukt)-8))
+        
+        ##allstats$cod <- substr(allstats$ukt, 1,(nchar(allstats$ukt)-8))
+        ##test line
+        allstats$cod <- substr(allstats$ukt, 1,2)
         
         #allstats <- merge(x=allstats, y=Ucodes, by="cod", all.x = T)
         allstats$razdel <-  Ucodes$razdel[match(allstats$cod, Ucodes$cod)]
@@ -123,8 +143,8 @@ ukrstatall <- function() {
         ##level placement
         allstats$level <- 0
         for(i in 0:3){
-          b <- grepl(paste("(^-){",1,"} +(- ){", i,"}", sep = ""), allstats$group)
-          allstats$level[b] <- i+1
+                b <- grepl(paste("(^-){",1,"} +(- ){", i,"}", sep = ""), allstats$group)
+                allstats$level[b] <- i+1
         }
         drops <- c("cod","ei")
         Amain <- allstats[ , !(names(allstats) %in% drops)]
@@ -146,28 +166,35 @@ ukrstatall <- function() {
         print(paste("delete duplicate. Begin at:", Sys.time()))
         ##Amain <- unique.data.frame(Amain)
         Amain <- Amain[!duplicated(Amain[,c(1,2,4:6)]),]
-        
+        a <<- Amain
         ##separate months
         print(paste("separate months. Begin at:", Sys.time()))
         per <- levels(factor(Amain$period))
         Amain <- spread(Amain, period, thUSD)
         for(i in per){
-          Amain[i][is.na(Amain[i])] <- 0
+                Amain[i][is.na(Amain[i])] <- 0
         }
         
         for(i in length(per):2){
-          Amain[per[i]] <- Amain[per[i]]-Amain[per[i-1]]
+                Amain[per[i]] <- Amain[per[i]]-Amain[per[i-1]]
         }
         print(paste("gather months. Begin at:", Sys.time()))
-        Amain <- Amain[,-9] ##delete first period. only if it is not january
+        ##Amain <- Amain[,-9] ##delete first period. only if it is not january
         Amain <- gather(Amain, "period", "thUSD", 9:length(names(Amain)))
-        Amain <<- Amain[Amain$thUSD!=0,]
+        Amain <- Amain[Amain$thUSD!=0,]
         
+        #Amain$razdel <- as.character(Amain$razdel)
+        #Amain$groups <- as.character(Amain$groups)
         
+        print(paste("accepting UTF-8. Begin at:", Sys.time()))
+        for(i in c(1,3,6,7)){
+                Amain[,i] <- enc2utf8(Amain[,i])
+        }
+        Amain <<- Amain
         print(paste("start writing data. Begin at:", Sys.time()))
         print(object.size(Amain), units="Mb")
         Sys.time()
-        write.csv2(Amain, "2015.csv", row.names = F) ## then open with MS excel and save as xlsx
+        ##write.csv2(Amain, "test.csv", row.names = F) ## then open with MS excel and save as xlsx
         ##write.table(Amain, file = "1q2015.csv", append = T, sep = ";", dec = ",", row.names = F, col.names = F, qmethod = "double")
         print(paste("End at:", Sys.time()))
         b <- Sys.time()
@@ -192,5 +219,5 @@ ukrstatall <- function() {
         ##                 host = "localhost", port = 5432,
         ##                 user = "postgres", password = pw)
         ##dbWriteTable(con, "import_export_3q", value = Amain, append = TRUE, row.names = FALSE)
-
+        
 }
