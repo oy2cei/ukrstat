@@ -1,4 +1,4 @@
-ukrstatall <- function() {
+ukrstatall <- function(month_separate = 1) {
         library(xlsx); library(stringr); library(dplyr); library(zoo); 
         library(tidyr); library(ggplot2); library(RPostgreSQL); library(reshape)
         a <- Sys.time()
@@ -85,28 +85,17 @@ ukrstatall <- function() {
                         stats <- stats[!stats$ei=="" & stats$thUSD>0,] ##del rows w/o ei and thUSD
                         
                         stats$mera <- as.character(stats$mera)
-                        ##был фактор, всё работало
                         stats$dest <- as.character(stats$dest)
-                        ##
                         nmera <- stats$mera=="amount"
                         stats$ei[nmera] <- "USDthnds"
                         stats <- stats[!is.na(stats$country), -5]
                         
-                        ##new line TEST IT
                         stats$ukt <- str_trim(stats$ukt)
-                        #stats$ukt <- gsub("000 -","000\n-", stats$ukt)##test line
-                        #stats$ukt <- gsub("\n","  ", stats$ukt)
-                        ##stats <- separate(stats, col=ukt, into=c("ukt", "group"), sep=" {2,3}") ##"\n"separate kode from groupe
-                        
                         stats$group <- substr(stats$ukt,11,9999)
                         stats$ukt <- gsub("\\D", "", substr(stats$ukt,1,10))
                         stats$group <- str_trim(stats$group)
                         
                         stats <- stats[stats$ei=="USDthnds",] ##nrows decrease from 370k to 164k
-                        ##mainukt <- grep("0{6}$", stats$ukt) ##find ukt number which ends with 6 zeros
-                        ##stats <- stats[mainukt, -2] ##decrease to 53k, del column ei, 20 Mb csv file
-                        ##stats <- stats[, -2] ## del column ei, leave all ukt codes. 40 Mb csv file!
-                        
                         stats$period <- dirperiod ##add column with name of dir, must be period
                         allstats <- rbind(allstats, stats)
                         
@@ -120,27 +109,21 @@ ukrstatall <- function() {
         print(paste("Began in:", a))
         print(paste("start joining at:", Sys.time()))
         
-        ##allstats <- merge(x=allstats, y=gC, by="country", all.x = T) ##work faster than left_join
         allstats$groupCountry <-  gC$groupCountry[match(allstats$country, gC$country)]
-        
         
         ##add UKT razdel and groups
         Ucodes <- read.csv("UKTcodes.csv", sep=";", colClasses = c("integer","character","character"))
         Ucodes$cod <- as.character(Ucodes$cod)
         allstats$cod <- 0
         
-        ##allstats$cod <- substr(allstats$ukt, 1,(nchar(allstats$ukt)-8))
-        ##test line
         allstats$cod <- substr(allstats$ukt, 1,2)
         
-        #allstats <- merge(x=allstats, y=Ucodes, by="cod", all.x = T)
         allstats$razdel <-  Ucodes$razdel[match(allstats$cod, Ucodes$cod)]
         allstats$groups <-  Ucodes$groups[match(allstats$cod, Ucodes$cod)]
         
         allstats$ukt <- as.numeric(allstats$ukt)
         
         print(paste("start level placement. Begin at:", Sys.time()))
-        ##level placement
         allstats$level <- 0
         for(i in 0:3){
                 b <- grepl(paste("(^-){",1,"} +(- ){", i,"}", sep = ""), allstats$group)
@@ -164,45 +147,47 @@ ukrstatall <- function() {
         ##-------------
         
         print(paste("delete duplicate. Begin at:", Sys.time()))
-        ##Amain <- unique.data.frame(Amain)
         Amain <- Amain[!duplicated(Amain[,c(1,2,4:6)]),]
         a <<- Amain
-        ##separate months
-        print(paste("separate months. Begin at:", Sys.time()))
-        per <- levels(factor(Amain$period))
-        Amain <- spread(Amain, period, thUSD)
-        for(i in per){
-                Amain[i][is.na(Amain[i])] <- 0
+        
+        if(month_separate == 1){
+                ##separate months
+                print(paste("separate months. Begin at:", Sys.time()))
+                per <- levels(factor(Amain$period))
+                Amain <- spread(Amain, period, thUSD)
+                for(i in per){
+                        Amain[i][is.na(Amain[i])] <- 0
+                }
+                
+                for(i in length(per):2){
+                        Amain[per[i]] <- Amain[per[i]]-Amain[per[i-1]]
+                }
+                print(paste("gather months. Begin at:", Sys.time()))
+                ##Amain <- Amain[,-9] ##delete first period. only if it is not january
+                Amain <- gather(Amain, "period", "thUSD", 9:length(names(Amain)))
+                Amain <- Amain[Amain$thUSD!=0,]
+                
+                #Amain$razdel <- as.character(Amain$razdel)
+                #Amain$groups <- as.character(Amain$groups)
+                
+                print(paste("accepting UTF-8. Begin at:", Sys.time()))
+                for(i in c(1,3,6,7)){
+                        Amain[,i] <- enc2utf8(Amain[,i])
+                }
         }
         
-        for(i in length(per):2){
-                Amain[per[i]] <- Amain[per[i]]-Amain[per[i-1]]
-        }
-        print(paste("gather months. Begin at:", Sys.time()))
-        ##Amain <- Amain[,-9] ##delete first period. only if it is not january
-        Amain <- gather(Amain, "period", "thUSD", 9:length(names(Amain)))
-        Amain <- Amain[Amain$thUSD!=0,]
-        
-        #Amain$razdel <- as.character(Amain$razdel)
-        #Amain$groups <- as.character(Amain$groups)
-        
-        print(paste("accepting UTF-8. Begin at:", Sys.time()))
-        for(i in c(1,3,6,7)){
-                Amain[,i] <- enc2utf8(Amain[,i])
-        }
+        Amain$year <- substr(Amain$period, nchar(Amain$period)-3, nchar(Amain$period))
         Amain <<- Amain
+        
         print(paste("start writing data. Begin at:", Sys.time()))
         print(object.size(Amain), units="Mb")
         Sys.time()
-        ##write.csv2(Amain, "test.csv", row.names = F) ## then open with MS excel and save as xlsx
+        write.csv2(Amain, "months.csv", row.names = F) ## then open with MS excel and save as xlsx
         ##write.table(Amain, file = "1q2015.csv", append = T, sep = ";", dec = ",", row.names = F, col.names = F, qmethod = "double")
         print(paste("End at:", Sys.time()))
         b <- Sys.time()
         return(b-a)
         
-        
-        ##A <- Amain[order(Amain$ukt),] ##если без (-) добавить значение в новый столбец перенести значение ниже удалить строку
-        ##write.xlsx2(Amain, "Allstats.xlsx", row.names=F) ##out of memory2
         
         ##plotting
         ##q <- ggplot(Amain, aes(x=dest, y=thUSD/1000000, fill=dest)) +
@@ -219,5 +204,15 @@ ukrstatall <- function() {
         ##                 host = "localhost", port = 5432,
         ##                 user = "postgres", password = pw)
         ##dbWriteTable(con, "import_export_3q", value = Amain, append = TRUE, row.names = FALSE)
+        
+        ##write to SQLite
+        ##library(RSQLite); library(DBI)
+        ##con <- dbConnect(SQLite(), dbname = "./DB_NAME.sqlite")
+        ##dbWriteTable(con, "DBstats", Amain, overwrite = F, append = T)
+        ##test DB
+        #dbListTables(con)
+        #res <- dbSendQuery(con, "SELECT * FROM DBstats WHERE ukt = 9018320000")
+        #a <- dbFetch(res)
+        #dbDisconnect(con)
         
 }
